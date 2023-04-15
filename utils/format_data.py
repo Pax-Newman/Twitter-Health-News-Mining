@@ -1,24 +1,28 @@
 import csv
 import os
+import sys
 import chardet
 
 # Find data files
-datasets = os.listdir('data')
 
-target_csv = 'dataset.csv'
-with open(target_csv, 'w') as target:
+data_path = sys.argv[1]
+target_path = sys.argv[2]
+
+datasets = os.listdir(data_path)
+
+with open(target_path, 'w') as target:
     writer = csv.writer(target)
 
     headers = ['id', 'datetime', 'publisher', 'content']
     writer.writerow(headers)
 
     for dataset in datasets:
-        path = 'data/' + dataset
+        path = data_path + dataset
 
         # Determine the encoding of the file
         with open(path, 'rb', buffering=0) as d:
             encoding = chardet.detect(d.readall())['encoding']
-            print(f'\n{dataset} -- {encoding}\n')
+            print(f'loading {dataset:<20} {encoding = } ')
     
         # Merge file into csv
         with open(path, encoding=encoding) as d:
