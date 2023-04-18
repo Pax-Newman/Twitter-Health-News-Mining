@@ -1,9 +1,13 @@
 
+env:
+	python -m venv .venv
+		
+
 python := ./.venv/bin/python
 
 generate-data:
 	@# Fetch dataset archive from UCI if it hasn't already been
-ifeq (ls | grep datasets.zip,)
+ifeq ($(wildcard datasets.zip),)
 	@echo 'downloading dataset...'
 	curl https://archive.ics.uci.edu/ml/machine-learning-databases/00438/Health-News-Tweets.zip --output datasets.zip
 endif	
