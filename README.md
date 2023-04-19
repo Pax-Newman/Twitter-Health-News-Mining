@@ -13,6 +13,8 @@ We used the [Health News in Twitter Dataset](https://archive.ics.uci.edu/ml/data
 
  - [x] Combine datasets into single csv
  - [ ] Clean dataset of links, hashtags, cashtags, etc.
+ - [ ] Remove punctuation & convert words to lowercase
+ - [ ] Determine how many tokens are in the dataset
  - [ ] Embed tweets into vectors (or graphs????)
  - [ ] Cluster tweets based on vector similarity(?)
  - [ ] Track trends through time of each cluster
