@@ -1,7 +1,6 @@
 import csv
 import os
 import sys
-import chardet
 
 # Find data files
 
@@ -18,14 +17,9 @@ with open(target_path, 'w') as target:
 
     for dataset in datasets:
         path = data_path + dataset
-
-        # Determine the encoding of the file
-        with open(path, 'rb', buffering=0) as d:
-            encoding = chardet.detect(d.readall())['encoding']
-            print(f'loading {dataset:<20} {encoding = } ')
     
         # Merge file into csv
-        with open(path, encoding=encoding) as d:
+        with open(path, encoding='unicode_escape') as d:
             reader = csv.reader(d, delimiter='|')
 
             # Original ordering:
