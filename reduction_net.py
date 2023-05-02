@@ -50,7 +50,7 @@ class ReductionNet(nn.Module):
             x = self.activation(layer(x))
         return x
 
-    def train(self, train_loader, dev_loader, epochs: int):
+    def train_model(self, train_loader, dev_loader, epochs: int):
 
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(self.parameters())
@@ -91,6 +91,7 @@ class ReductionNet(nn.Module):
             epoch_loss = epoch_loss / len(train_loader)
             print(f'{epoch_loss = }')
 
+            self.eval()
             acc = 0
             total = 0
             for _, (d_mb_x,d_mb_y) in enumerate(dev_loader):
@@ -104,6 +105,7 @@ class ReductionNet(nn.Module):
                 total += 1
             dev_acc = (acc / total)
             print("dev acc = %.3f" % (dev_acc*100))
+            self.train()
 
 
 class TweetDataset(Dataset):
@@ -146,7 +148,9 @@ def main():
             num_classes=classes
             )
 
-    model.train(train_loader=train_loader, dev_loader=dev_loader, epochs=100)
+    model.train_model(train_loader=train_loader, dev_loader=dev_loader, epochs=100)
+
+    torch.save(model.state_dict, 'models/reductionnet')
 
 
 
