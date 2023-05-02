@@ -2,12 +2,12 @@
 env:
 	@# Create new venv if there isn't one
 ifeq ($(wildcard .venv),)
-	@python -m venv .venv
+	@python -m venv venv
 endif
 	@# Install/update venv with necessary packages
-	./.venv/bin/python -m pip install -r requirements.txt
+	./venv/bin/python -m pip install -r requirements.txt
 
-python := ./.venv/bin/python
+python := ./venv/bin/python
 
 generate-data:
 	@# Fetch dataset archive from UCI if it hasn't already been

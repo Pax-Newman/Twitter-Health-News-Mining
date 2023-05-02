@@ -7,11 +7,19 @@ import matplotlib.pyplot as plt
 from csv import reader
 import pandas as pd
 
+import chardet
+
+df = pd.read_csv('data/dataset.csv')
+print([i for i in df[df['content'].str.contains('ò')]['content']])
+quit()
+
 with open('data/dataset.csv') as f:
     datareader = reader(f)
     data = [
             row[3] for row in datareader
             ]
+
+
 
 print('initializing model')
 ft = FastText()
@@ -19,9 +27,12 @@ ft = FastText()
 print(f'{len(data) = }')
 
 print('embedding tweets')
+# Embeddings are of shape Samples x Features
 embeddings = np.array([
     ft(tweet) for tweet in data[:]
         ])
+
+print(f'{embeddings.shape = }')
 
 print('reducing')
 # reduced = decomposition.PCA(2).fit_transform(embeddings)
@@ -31,7 +42,9 @@ print('clustering')
 #labels = cluster.KMeans(n_clusters=10).fit_predict(reduced)
 labels = cluster.KMeans(n_clusters=6).fit_predict(embeddings)
 
-df = pd.dataframe
+df = pd.read_csv('data/dataset.csv')
+df['label'] = labels
+
 
 # plt.scatter(reduced[:,0], reduced[:,1], c=labels)
 #
