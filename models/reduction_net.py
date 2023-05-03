@@ -7,6 +7,8 @@ import torch
 import pandas as pd
 import numpy as np
 
+
+
 class Layer():
     def __init__(self,
                  in_dim: int,
@@ -50,7 +52,11 @@ class ReductionNet(nn.Module):
             x = self.activation(layer(x))
         return x
 
-    def train_model(self, train_loader, dev_loader, epochs: int):
+    def train_model(self, 
+                    train_loader,
+                    dev_loader, 
+                    args
+                    ):
 
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(self.parameters())
@@ -150,9 +156,7 @@ def main():
 
     model.train_model(train_loader=train_loader, dev_loader=dev_loader, epochs=100)
 
-    torch.save(model.state_dict, 'models/reductionnet')
-
-
+    torch.save(model.state_dict, 'models/reduction_net')
 
 if __name__ == '__main__':
     main()
