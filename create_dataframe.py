@@ -6,9 +6,17 @@ from re import sub
 import nltk
 import pandas as pd
 import numpy as np
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--data_path', type=str, default='data/dataset.csv')
+parser.add_argument('--save_path', type=str, default='data/dataframe')
+parser.add_argument('--n_clusters', type=int, default=6)
+
+args = parser.parse_args()
 
 # Load dataset
-df = pd.read_csv('data/dataset.csv')
+df = pd.read_csv(args.data_path)
 
 print(df.iloc[:5])
 
@@ -42,9 +50,10 @@ print(df[df['cleaned'] == ''])
 
 print(len(df))
 
-df = df[df['cleaned'] != '']
 
-df.drop(df[df['cleaned'] == ''].index, inplace=True)
+df = df.drop(df[df['cleaned'] == ''].index)
+
+df = df[df['cleaned'] != '']
 
 print(df[df['cleaned'] == ''])
 
@@ -60,12 +69,12 @@ print(df.iloc[:5])
 
 # Cluster the tweet embeddings
 print('clustering embeddings')
-df['label'] = cluster.KMeans(n_clusters=6).fit_predict(list(df['embedding']))
+df['label'] = cluster.KMeans(n_clusters=args.n_clusters).fit_predict(list(df['embedding']))
 
 print(df.iloc[0])
 
 # Save the dataframe for later use
 print('pickling dataframe')
-df.to_pickle('data/dataframe')
+df.to_pickle(args.save_path)
 
 
