@@ -1,4 +1,4 @@
-from embedders import FastText
+from models.embedders import FastText
 from sklearn import cluster
 from nltk.corpus import stopwords
 from re import sub
