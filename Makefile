@@ -35,8 +35,7 @@ endif
 
 train-model:
 	@# Train the feature reduction network
-	@mkdir -p models
-	@python reduction_net.py \
+	@python models/reduction_net.py \
 		--data_path data/dataframe \
 		--lr 0.003 \
 		--epochs 30 \
