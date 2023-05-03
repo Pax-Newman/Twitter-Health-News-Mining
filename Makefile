@@ -22,10 +22,16 @@ endif
 	@$(python) utils/unzip.py datasets.zip data/
 	
 	@# Merge datasets into a single csv file
-	@$(python) utils/format_data.py ./data/Health-Tweets/ ./data/dataset.csv
+	@$(python) utils/format_data.py data/Health-Tweets/ data/dataset.csv
 
 	@# Remove subdirectories from data/
 	@rm -r data/*/
+
+	@# Clean data and turn it into a pandas dataframe
+	@python generate_dataframe.py \
+		--data_path data/dataset.csv \
+		--save_path data/dataframe \
+		--n_clusters 6
 
 train-model:
 	@# Train the feature reduction network
