@@ -1,4 +1,6 @@
 
+default: env generate-data train-model
+
 env:
 	@# Create new venv if there isn't one
 ifeq ($(wildcard .venv),)
@@ -24,6 +26,19 @@ endif
 
 	@# Remove subdirectories from data/
 	@rm -r data/*/
+
+train-model:
+	@# Train the feature reduction network
+	@mkdir -p models
+	@python reduction_net.py \
+		--data_path data/dataframe \
+		--lr 0.003 \
+		--epochs 30 \
+		--input_features 300 \
+		--layers 64 \
+		--classes 6 \
+		--save_path models/reduction_net
+
 
 clean:
 	rm -rf data
