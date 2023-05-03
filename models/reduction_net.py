@@ -5,9 +5,8 @@ from torchmetrics import Accuracy
 
 import torch
 import pandas as pd
-import numpy as np
 
-
+import argparse
 
 class Layer():
     def __init__(self,
@@ -55,13 +54,15 @@ class ReductionNet(nn.Module):
     def train_model(self, 
                     train_loader,
                     dev_loader, 
-                    args
+                    classes,
+                    epochs,
+                    lr,
                     ):
 
         criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(self.parameters())
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
-        accuracy = Accuracy(task='multiclass', num_classes=6)
+        accuracy = Accuracy(task='multiclass', num_classes=classes)
         
         for epoch in range(epochs):
             print(f'{epoch = }')
@@ -97,15 +98,14 @@ class ReductionNet(nn.Module):
             epoch_loss = epoch_loss / len(train_loader)
             print(f'{epoch_loss = }')
 
+            # Eval the model's current performance
             self.eval()
             acc = 0
             total = 0
             for _, (d_mb_x,d_mb_y) in enumerate(dev_loader):
                 embeddings = self.forward(d_mb_x)
                 y_pred_probabilities = self.softmax(self.classifier(embeddings))
-                
-                _, dev_predicted = torch.max(y_pred_probabilities, 1)
-                
+                 
                 # true_pos += torch.sum(dev_predicted.argmax(axis=1) == d_mb_y.argmax(axis=1))
                 acc += accuracy(y_pred_probabilities.argmax(axis=1), d_mb_y.argmax(axis=1))
                 total += 1
@@ -135,28 +135,44 @@ class TweetDataset(Dataset):
         return len(self.df)
 
 def main():
-    path = 'data/dataframe'
-    dataframe = pd.read_pickle(path)
 
-    classes = 6
+    # Define arguments
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--epochs', type=int, default=30)
+    parser.add_argument('--input_features', type=int, default=300)
+    parser.add_argument('--layers', type=str, default='64')
+    parser.add_argument('--classes', type=int, default=6)
+    parser.add_argument('--save_path', type=str, default='models/reduction_net')
+    parser.add_argument('--data_path', type=str, default='data/dataframe')
+
+    args = parser.parse_args()
+
+    dataframe = pd.read_pickle(args.data_path)
     
     split = floor(len(dataframe) * 0.9)
 
-    train_set = TweetDataset(dataframe.iloc[:split], classes)
+    train_set = TweetDataset(dataframe.iloc[:split], args.classes)
     train_loader = DataLoader(train_set, batch_size=32, shuffle=True)
 
-    dev_set = TweetDataset(dataframe.iloc[split:], classes)
+    dev_set = TweetDataset(dataframe.iloc[split:], args.classes)
     dev_loader = DataLoader(dev_set, batch_size=32, shuffle=True)
 
     model = ReductionNet(
-            input_features=300,
-            layers=[64],
-            num_classes=classes
+            input_features=args.input_features,
+            layers=args.layers.split(','),
+            num_classes=args.classes
             )
 
-    model.train_model(train_loader=train_loader, dev_loader=dev_loader, epochs=100)
+    model.train_model(
+            train_loader=train_loader, 
+            dev_loader=dev_loader, 
+            epochs=args.epochs,
+            lr=args.lr,
+            classes=args.classes
+            )
 
-    torch.save(model.state_dict, 'models/reduction_net')
+    torch.save(model.state_dict, args.save_path)
 
 if __name__ == '__main__':
     main()
