@@ -28,7 +28,7 @@ endif
 	@rm -r data/*/
 
 	@# Clean data and turn it into a pandas dataframe
-	@python generate_dataframe.py \
+	@python create_dataframe.py \
 		--data_path data/dataset.csv \
 		--save_path data/dataframe \
 		--n_clusters 6
@@ -37,11 +37,14 @@ train-model:
 	@# Train the feature reduction network
 	@python models/reduction_net.py \
 		--data_path data/dataframe \
-		--lr 0.003 \
-		--epochs 30 \
 		--input_features 300 \
 		--layers 64 \
 		--classes 6 \
+		--activation sigmoid \
+		--lr 0.001 \
+		--batch_size 64 \
+		--epochs 50 \
+		--optimizer adamw \
 		--save_path models/reduction_net
 
 
