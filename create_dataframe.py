@@ -14,13 +14,13 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', type=str, default='data/dataset.csv', help='path of the csv file to use')
 parser.add_argument('--save_path', type=str, default='data/dataframe', help='path to place the resulting dataframe')
 parser.add_argument('--n_clusters', type=int, default=6, help='how many clusters to create with kmeans')
-parser.add_argument('--embedder', type=str, default='fasttext', choices=['fasttext', 'bert'] , help='which embedder to use')
 parser.add_argument('--device', type=str, default='cpu', help='which device to use for embedding (applies only to bert)')
 
 args = parser.parse_args()
 
 # Load dataset
-df = pd.read_csv(args.data_path)
+#df = pd.read_csv(args.data_path, delimiter='|', quoting=3)
+df = pd.read_pickle(args.data_path)
 
 print(df.iloc[:5])
 
@@ -33,58 +33,51 @@ def clean(tweet: str) -> str:
     # cleaned = tweet
     # Remove Unicode escape sequences
     cleaned = sub(r'â\S+>', '', tweet)
+    cleaned = sub(r'â', '', cleaned)
     # Remove links
-    # cleaned = sub(r'http\S+', '', cleaned)
+    cleaned = sub(r'http\S+', '', cleaned)
     # Remove usernames
-    # cleaned = sub(r'@\S+', '', cleaned)
+    cleaned = sub(r'@\S+', '', cleaned)
     # Remove hashtags
-    cleaned = sub(r'#\S+', '', cleaned)
+    # cleaned = sub(r'#\S+', '', cleaned)
     # Remove punctuation
     cleaned = sub(r'[^\w\s]', '', cleaned)
     # Remove stopwords
     cleaned = ' '.join([word for word in cleaned.split(' ') if word not in stopword_set])
     return cleaned
 
+def remove_link(tweet: str) -> str:
+    cleaned = sub(r'http\S+', '', tweet)
+    return cleaned
+
 # Init tqdm for pandas df.apply
 tqdm.pandas()
 
-if args.embedder == 'fasttext':    
-    df['cleaned'] = df['content'].apply(clean)
-    
-    print(df.iloc[:5]['cleaned'])
-    
-    print('\nEmpty cleaned rows:')
-    print(df[df['cleaned'] == ''])
-    
-    print(len(df))
-    
-    
-    df = df.drop(df[df['cleaned'] == ''].index)
-    
-    df = df[df['cleaned'] != '']
-    
-    print(df[df['cleaned'] == ''])
-    
-    print(len(df))
-    
-    # Embed tweet content
-    embedder = FastText()
-    
-    print('embedding content')
-    df['embedding'] = df['cleaned'].progress_apply(embedder)
-elif args.embedder == 'bert':
-    embedder = SentenceTransformer('sentence-transformers/all-roberta-large-v1', device=args.device).encode
-    
-    df['embedding'] = df['content'].progress_apply(embedder)
-    # df['embedding'] = embedder.encode(tqdm(df['content']), batch_size=32)
+# Clean the content
+df['cleaned'] = df['content'].apply(clean)
 
-print(df.iloc[:5])
+print(f'current size: {len(df)}')
 
-# Cluster the tweet embeddings
-print('clustering embeddings')
-df['label'] = cluster.KMeans(n_clusters=args.n_clusters).fit_predict(list(df['embedding']))
+# Drop rows with empty strings
+df = df.drop(df[df['cleaned'] == ''].index)
+# Drop rows with only whitespace
+df = df.drop(df[df['cleaned'].str.isspace()].index)
 
-print(df.iloc[0])
+print(f'size after cleaning: {len(df)}')
+
+# Create FastText embeddings
+ft = FastText()
+print('generating FastText embeddings')
+
+df['fasttext'] = df['cleaned'].progress_apply(ft)
+
+# Create BERT embeddings
+bert = SentenceTransformer('sentence-transformers/all-roberta-large-v1', device=args.device).encode
+print('generating BERT embeddings')
+
+df['bert'] = df['cleaned'].progress_apply(bert)
+
+# Cluster the tweet embeddings??
 
 # Save the dataframe for later use
 print('pickling dataframe')

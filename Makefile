@@ -9,7 +9,8 @@ endif
 	@# Install/update venv with necessary packages
 	./.venv/bin/python -m pip install -r requirements.txt
 
-python := ./.venv/bin/python
+#python := ./.venv/bin/python
+python = python
 
 generate-data:
 	@# Fetch dataset archive from UCI if it hasn't already been
@@ -22,26 +23,29 @@ endif
 	@$(python) utils/unzip.py datasets.zip data/
 	
 	@# Merge datasets into a single csv file
-	@$(python) utils/format_data.py data/Health-Tweets/ data/dataset.csv
+	@$(python) utils/format_data.py data/Health-Tweets/ data/original_dataset.pickle
 
 	@# Remove subdirectories from data/
 	@rm -r data/*/
 
 	@# Clean data and turn it into a pandas dataframe
 	@python create_dataframe.py \
-		--data_path data/dataset.csv \
-		--save_path data/dataframe \
-		--n_clusters 6
+		--data_path data/original_dataset.pickle \
+		--save_path data/beegframe.pickle \
+		--n_clusters 6 \
+		--device cpu # Change this to whatever pytorch device is best for your system
 
 train-model:
 	@# Train the feature reduction network
 	@python models/reduction_net.py \
-		--data_path data/dataframe \
-		--input_features 300 \
-		--layers 64 \
+		--data_path data/bigframe \
+		--embedding_col 'bert' \
+		--label_col 'bert label' \
+		--input_features 1024 \
+		--layers 256,256,64 \
 		--classes 6 \
-		--activation sigmoid \
-		--lr 0.001 \
+		--activation relu \
+		--lr 0.004 \
 		--batch_size 64 \
 		--epochs 50 \
 		--optimizer adamw \
