@@ -30,7 +30,6 @@ nltk.download('stopwords')
 stopword_set = set(stopwords.words('english'))
 
 def clean(tweet: str) -> str:
-    # cleaned = tweet
     # Remove Unicode escape sequences
     cleaned = sub(r'â\S+>', '', tweet)
     cleaned = sub(r'â', '', cleaned)
@@ -46,8 +45,10 @@ def clean(tweet: str) -> str:
     cleaned = ' '.join([word for word in cleaned.split(' ') if word not in stopword_set])
     return cleaned
 
-def remove_link(tweet: str) -> str:
+def min_clean(tweet: str) -> str:
     cleaned = sub(r'http\S+', '', tweet)
+    cleaned = sub(r'â\S+>', '', cleaned)
+    cleaned = sub(r'â', '', cleaned)
     return cleaned
 
 # Init tqdm for pandas df.apply
@@ -75,7 +76,7 @@ df['fasttext'] = df['cleaned'].progress_apply(ft)
 bert = SentenceTransformer('sentence-transformers/all-roberta-large-v1', device=args.device).encode
 print('generating BERT embeddings')
 
-df['bert'] = df['cleaned'].progress_apply(bert)
+df['bert'] = df['content'].progress_apply(lambda tweet : bert(min_clean(tweet)))
 
 # Cluster the tweet embeddings??
 
