@@ -1,28 +1,30 @@
 from torch import TensorType, nn
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.data.dataloader import default_collate
 from math import floor
 from torchmetrics import Accuracy
 
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+from tqdm import tqdm
 
 import torch
 import pandas as pd
 import matplotlib.pyplot as plt
-import numpy as np
 
 import argparse
 
 from sklearn import cluster
 
-class Layer():
+class Layer(nn.Module):
     def __init__(self,
                  in_dim: int,
                  out_dim: int):
+        super().__init__()
         self.linear = nn.Linear(in_dim, out_dim)
         self.norm = nn.LayerNorm(out_dim)
     
-    def __call__(self, x: TensorType) -> TensorType:
+    def forward(self, x: TensorType) -> TensorType:
         y = self.linear(x)
         y = self.norm(y)
         return y
@@ -42,10 +44,15 @@ class ReductionNet(nn.Module):
         super().__init__()
         layer_dims = [input_features] + layers
  
-        self.layers = [
+        # self.layers = [
+        #         Layer(layer_dims[i-1], layer_dims[i])
+        #         for i in range(1, len(layer_dims))
+        #         ]
+
+        self.layers = nn.ModuleList([
                 Layer(layer_dims[i-1], layer_dims[i])
                 for i in range(1, len(layer_dims))
-                ]
+            ])
 
         for layer in self.layers:
             print(f'{layer.linear = }')
@@ -59,6 +66,8 @@ class ReductionNet(nn.Module):
         
         self.classifier = nn.Linear(layer_dims[-1], num_classes)
         self.softmax = nn.Softmax(dim=1)
+        self.accuracy = Accuracy(task='multiclass', num_classes=num_classes)
+
     
     def forward(self, x: TensorType) -> TensorType:
         for layer in self.layers:
@@ -70,14 +79,13 @@ class ReductionNet(nn.Module):
 
     @torch.no_grad()
     def embed(self, x: TensorType) -> TensorType:
-        for layer in self.layers[:-1]:
+        for _, layer in enumerate(self.layers[:-1]):
             x = self.activation(layer(x))
         return self.layers[-1](x)
 
     def train_model(self, 
                     train_loader,
                     dev_loader, 
-                    classes,
                     epochs,
                     lr,
                     optimizer,
@@ -97,10 +105,7 @@ class ReductionNet(nn.Module):
             optimizer = torch.optim.RMSprop(self.parameters(), lr=lr)
         elif optimizer == 'sgd':
             optimizer = torch.optim.SGD(self.parameters(), lr=lr)
-
-
-        accuracy = Accuracy(task='multiclass', num_classes=classes)
-        
+ 
         for epoch in range(epochs):
             print(f'{epoch = }')
             epoch_loss = 0.0
@@ -145,7 +150,7 @@ class ReductionNet(nn.Module):
                 y_pred_probabilities = self.softmax(self.classifier(embeddings))
                  
                 # true_pos += torch.sum(dev_predicted.argmax(axis=1) == d_mb_y.argmax(axis=1))
-                acc += accuracy(y_pred_probabilities.argmax(axis=1), d_mb_y.argmax(axis=1))
+                acc += self.accuracy(y_pred_probabilities.argmax(axis=1), d_mb_y.argmax(axis=1))
                 total += 1
             dev_acc = (acc / total)
             print("dev acc = %.3f" % (dev_acc*100))
@@ -159,13 +164,15 @@ class TweetDataset(Dataset):
         """
         self.df = dataframe.sample(frac=1)
         self.classes = classes
+        self.embedding_column = embedding_column
+        self.label_column = label_column
 
     def __getitem__(self, index):
         row = self.df.iloc[index]
 
-        embed = row[embedding_column]
+        embed = row[self.embedding_column]
         label = torch.zeros(self.classes)
-        label[row[label_column]] = 1.0
+        label[row[self.label_column]] = 1.0
 
         return embed, label
 
@@ -180,6 +187,7 @@ def main():
     parser.add_argument('--input_features', type=int, default=300)
     parser.add_argument('--layers', type=str, default='64')
     parser.add_argument('--classes', type=int, default=6)
+    parser.add_argument('--device', type=str, default='cpu')
     # Training hyperparameters
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--epochs', type=int, default=30)
@@ -197,16 +205,24 @@ def main():
 
     # Load data
     df = pd.read_pickle(args.data_path)
+
+    df[args.label_col] = cluster.KMeans(n_clusters=args.classes, n_init='auto').fit_predict(list(df[args.embedding_col]))
     
     split = floor(len(df) * 0.9)
-    
+    device = torch.device(args.device)
+ 
     train_set = TweetDataset(
             dataframe=df.iloc[:split],
             classes=args.classes,
             embedding_column=args.embedding_col,
             label_column=args.label_col
             )
-    train_loader = DataLoader(train_set, batch_size=args.batch_size, shuffle=True)
+    train_loader = DataLoader(
+            train_set,
+            batch_size=args.batch_size,
+            shuffle=True,
+            collate_fn = lambda x : list(map(lambda x : x.to(device), default_collate(x)))
+    )
 
     dev_set = TweetDataset(
             dataframe=df.iloc[split:],
@@ -214,7 +230,12 @@ def main():
             embedding_column=args.embedding_col,
             label_column=args.label_col
             )
-    dev_loader = DataLoader(dev_set, batch_size=args.batch_size, shuffle=True)
+    dev_loader = DataLoader(
+            dev_set,
+            batch_size=args.batch_size,
+            shuffle=True,
+            collate_fn = lambda x : list(map(lambda x : x.to(device), default_collate(x)))
+    )
 
     # Layer arg format: 3x128,3x64 = block of 3 128, block of 3 64
     layers = [
@@ -226,15 +247,14 @@ def main():
             input_features=args.input_features,
             layers=layers,
             num_classes=args.classes,
-            activation=args.activation
-            )
+            activation=args.activation,
+            ).to(device=device)
 
     model.train_model(
             train_loader=train_loader, 
             dev_loader=dev_loader, 
             epochs=args.epochs,
             lr=args.lr,
-            classes=args.classes,
             optimizer=args.optimizer
             )
 
@@ -242,11 +262,13 @@ def main():
 
     # Test cluster performance
     # reduced = df['embedding'].apply(lambda e : model.embed(torch.from_numpy(e)))
-    reduced = torch.vstack([model.embed(torch.from_numpy(e)) for e in df[args.embedding_col]])
+    print('Reducing Embeddings')
+    reduced = torch.vstack([model.embed(torch.from_numpy(e).to(device)) for e in tqdm(df[args.embedding_col])]).cpu()
+    print('Fitting PCA')
     decomp = PCA(2).fit_transform(reduced)
- 
-    plt.scatter(decomp[:,0], decomp[:,1], c=df['label'])
-    plt.savefig('pca_bert_clusters')   
+    print('Plotting clusters')
+    plt.scatter(decomp[:,0], decomp[:,1], c=df[args.label_col])
+    plt.savefig('pca_reduced_clusters')   
 
     # decomp = TSNE(2).fit_transform(reduced)
     #

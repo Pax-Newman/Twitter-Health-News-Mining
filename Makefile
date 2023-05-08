@@ -33,21 +33,22 @@ endif
 		--data_path data/original_dataset.pickle \
 		--save_path data/beegframe.pickle \
 		--n_clusters 6 \
-		--device cpu # Change this to whatever pytorch device is best for your system
+		--device mps # Change this to whatever pytorch device is best for your system
 
 train-model:
 	@# Train the feature reduction network
 	@python models/reduction_net.py \
-		--data_path data/bigframe \
+		--device mps \
+		--data_path data/beegframe.pickle \
 		--embedding_col 'bert' \
 		--label_col 'bert label' \
 		--input_features 1024 \
-		--layers 256,256,64 \
-		--classes 6 \
+		--layers 512,256,256,64 \
+		--classes 11 \
 		--activation relu \
 		--lr 0.004 \
 		--batch_size 64 \
-		--epochs 50 \
+		--epochs 10 \
 		--optimizer adamw \
 		--save_path models/reduction_net
 
