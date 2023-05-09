@@ -180,6 +180,9 @@ keySort=sortKeys(keyDict)
 fuzzify(keySort,wordDict)
 print('number of words in fuzzy dictionary: ', len(wordDict))
 
+print('pickling dictionary')
+with open('wordDict.pickle', 'wb') as file:
+    pickle.dump(wordDict, file)
 
 
 
