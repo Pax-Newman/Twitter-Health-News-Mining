@@ -1,0 +1,85 @@
+import fuzzywuzzy
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
+
+import pandas as pd
+import numpy as np
+import itertools
+
+from sklearn.decomposition import PCA
+
+import matplotlib.pyplot as plt
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+data = pd.read_pickle("beegframe.pickle")
+data.columns
+# Index(['id', 'datetime', 'publisher', 'content', 'cleaned', 'fasttext',
+#        'bert'],
+#       dtype='object')
+
+
+
+#input list of noun phrases, list of unique elements (in descending order of avg. fuzz ratio), and dictionary
+#replaces similar strings (reduces unique elements)
+#adds replaced strings the dictionary with their replacements as an (old string, new string) tuple
+
+def fuzzify(keys, featDict):
+  done=[]
+  for i in range(len(keys)):
+    for x in range(i+1,len(keys)):
+      if not(keys[x] in done):
+        ratio=fuzz.ratio(keys[i],keys[x])
+        if ratio>90:
+          featDict[keys[x]]=keys[i]
+          keys[x]=keys[i]
+    done.append(keys[i])
+
+
+
+#takes list of noun phrases, adds dictionary entries to keyDict with (noun phrase, avg. fuzz.ratio score)
+#fuzz.ratio average is calculated using all non-identical elements
+#returns a list of unique elements from the inputed list
+#an equal number of tuples are added to keyDict as are in the returned list (every unique value is given a dictionary entry)
+
+def simCount(features,keyDict):
+  finList=[]
+  for i in range(len(features)):
+    if not(features[i] in finList): 
+      count=0
+      for x in range(len(features)):
+        ratio=fuzz.ratio(features[i],features[x])
+        if not(features[i] in keyDict):
+          keyDict[features[i]]=0
+        if not(ratio==100):
+          keyDict[features[i]]=keyDict[features[i]]+ratio
+          count=count+1
+      finList.append(features[i])
+      keyDict[features[i]]=keyDict[features[i]]/count
+
+
+
+#input a dictionary with (string, float) tuples
+#returns a list of strings in descending order of their corresponding float
+
+def sortKeys(keyDict):
+  allVals=[keyDict.get(k) for k in keyDict]
+  sortedVals=sorted(allVals,reverse=True)
+  orderedFeat=[list(keyDict.keys())[list(keyDict.values()).index(x)] for x in sortedVals]
+  return orderedFeat
+
+# makes a list of all the words in all the tweets
+words = np.unique(list(itertools.chain(*[data["cleaned"].iloc[j,].split(sep = " ") for j in range(data.shape[0]-1)])))
+
+keyDict = {}
+wordDict = {}
+
+simCount(words, keyDict)
+keySort=sortKeys(keyDict)
+fuzzify(keySort,wordDict)
+
+
+
+
+
+
