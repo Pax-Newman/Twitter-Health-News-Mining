@@ -43,8 +43,8 @@ args = parser.parse_args()
 
 # Load dataset
 #df = pd.read_csv(args.data_path, delimiter='|', quoting=3)
-df = pd.read_csv("data/dataset.csv")
-# df = pd.read_pickle(args.data_path)
+# df = pd.read_csv("data/dataset.csv")
+ df = pd.read_pickle(args.data_path)
 
 
 print(df.iloc[:5])
