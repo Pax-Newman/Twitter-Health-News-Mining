@@ -34,7 +34,7 @@ lemmer = WordNetLemmatizer()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', type=str, default='data/dataset.csv', help='path of the csv file to use')
-parser.add_argument('--save_path', type=str, default='data/dataframe', help='path to place the resulting dataframe')
+# parser.add_argument('--save_path', type=str, default='data/dataframe', help='path to place the resulting dataframe')
 # parser.add_argument('--n_clusters', type=int, default=6, help='how many clusters to create with kmeans')
 # parser.add_argument('--device', type=str, default='cpu', help='which device to use for embedding (applies only to bert)')
 
