@@ -101,6 +101,10 @@ def keepStop(tweet: str) -> str:
     # cleaned = ' '.join([word for word in cleaned.split(' ') if word not in stopword_set])
     return cleaned
 
+def featReduc(tweet: str) -> str:
+    reduced = ' '.join([newDict[word] if word in newDict else word for word in tweet.split(' ')])
+    return reduced
+
 # used for BERT
 def min_clean(tweet: str) -> str:
     cleaned = sub(r'http\S+', '', tweet)
@@ -253,8 +257,136 @@ for i in range(len(words)):
         print('final swap: ', swap)
         print()
 
-print('number of features reduced using synonyms: ', len(swapDict.keys()))
+print('number of features reduced using synonyms: ', len(swapDict.keys())) # 17983
 
+print('pickling dictionary')
+with open('swapDict.pickle', 'wb') as file:
+    pickle.dump(swapDict, file)
+
+newSwapDict = {}
+for key in swapDict:
+    value = swapDict[key]
+    highSim = False
+    for s1, s2 in itertools.product(wordnet.synsets(key), wordnet.synsets(value)):
+        while highSim == False:
+            if s1.pos() == s2.pos():
+                score = wordnet.wup_similarity(s1,s2)
+                if score>=0.9:
+                    highSim = True
+                    newSwapDict[key] = value
+
+# regenerating these just to be sure they're the same:
+wordList = np.unique(list(itertools.chain(*[df["cleaned"].iloc[j,].split(sep = " ") for j in range(df.shape[0]-1)])), return_counts = True)
+words = wordList[0][6:]
+counts = wordList[1][6:]
+wordCounts = np.array([words, counts]).T
+wordCountsSorted = wordCounts[wordCounts[:, 1].astype(int).argsort()]
+wordCountDict = dict(zip(wordCounts[:,0],wordCounts[:,1].astype(int)))
+
+with open('swapDict.pickle', 'rb') as doc:
+    swapDict = pickle.load(doc)
+
+newDict = {}
+# top down through most frequent words again
+for i in range(len(words)):   
+    if(i%1000==0):
+        print(i, "====================================================================================================")
+        print()
+    w = wordCountsSorted[len(words)-(i+1),0]
+    # if they had a sim score > 0.85 they'll be in swapDict
+    if w in swapDict:
+        max_score = .97
+        swap = ''
+        for k in wordCountsSorted[len(words)-i:,0]:
+            updated = False
+            for s1, s2 in itertools.product(wordnet.synsets(w), wordnet.synsets(k)):
+                if updated ==False:
+                    if s1.pos()==s2.pos():
+                        score = wordnet.wup_similarity(s1,s2)
+                        if score > max_score:
+                            max_score = score
+                            swap = k
+                            updated = True
+        if swap != '':
+            print('w: ', w, ' swap: ', swap)
+            while swap in newDict:
+                swap = newDict[swap]
+            newDict[w] = swap
+            print('final swap: ', swap)
+            print()
+
+print('pickling dictionary')
+with open('newDict.pickle', 'wb') as file:
+    pickle.dump(newDict, file)
+
+
+reducWordList = np.unique(list(itertools.chain(*[df["featReduc"].iloc[j,].split(sep = " ") for j in range(df.shape[0]-1)])), return_counts = True)
+reducWords = reducWordList[0][6:]
+reducCounts = reducWordList[1][6:]
+reducWordCounts = np.array([reducWords, reducCounts]).T
+
+
+'''
+        val = swapDict[w]
+        print("w: ",w, ' val: ',val)
+        newSwap = ''
+        parent = True # parent indicates whether they were the "first" (highest count) word to swap with val
+        for j in wordCountsSorted[len(words)-i:,0]:    # checking words with higher count
+            if parent == True:
+                if j in swapDict and swapDict[j]==val:      # if they have the same val, w is not parent
+                    parent = False
+        if parent:                      # if w is parent, val is the highest similarity word with w
+            highSim = False
+            for s1,s2 in itertools.product(wordnet.synsets(w),wordnet.synsets(val)): # checks synonyms between w, val
+                if highSim == False:
+                    if s1.pos() == s2.pos():            # if they have matching pos
+                        score = wordnet.wup_similarity(s1,s2)
+                        if score>0.9:                  # ... and high enough score
+                            highSim = True
+                            newSwap = val               # we're done; the old pair works
+                            print("val worked, ", val)
+        if newSwap=='': # if they weren't parent or if they were and the old val didn't meet new requirements, have to redo the search... it could be that they had highest sim with a word that had
+            maxScore = 0.9              # different pos, so have to check back through all higher count words anyway ugh
+            for j in wordCountsSorted[len(words)-i:,0]:
+                for s1, s2 in itertools.product(wordnet.synsets(w), wordnet.synsets(j)):
+                    if s1.pos() == s2.pos():
+                        score = wordnet.wup_similarity(s1,s2)
+                        if score > max_score:
+                            max_score = score
+                            newSwap = j
+        if newSwap != '':
+            print('w: ', w, ' swap: ', newSwap)
+            while newSwap in newDict:
+                newSwap = newDict[newSwap]
+            newDict[w] = newSwap
+            print('final swap: ', newSwap)
+            print()
+        else:
+            print("w: ", w, " didn't make the cut")
+            print()
+
+
+
+
+
+            
+    swap = ''
+    if 
+    for k in wordCountsSorted[len(words)-i:,0]:
+        for s1, s2 in itertools.product(wordnet.synsets(w), wordnet.synsets(k)):
+            score = wordnet.wup_similarity(s1,s2)
+            if score > max_score:
+                max_score = score
+                swap = k
+    if swap != '':
+        print('w: ', w, ' swap: ', swap)
+        while swap in swapDict:
+            swap = swapDict[swap]
+        swapDict[w] = swap
+        print('final swap: ', swap)
+        print()
+
+'''
 
 
 ''' 
@@ -330,7 +462,7 @@ for score, s1, s2 in simSorted:
 ''' 
 
             
-           
+          
 
 
 # Create FastText embeddings
@@ -338,14 +470,14 @@ ft = FastText()
 print('generating FastText embeddings')
 
 df['fast'] = df['cleaned'].progress_apply(ft)
-df['fastNoTags'] = df['cleanedNoTags'].progress_apply(ft)
+
 
 # Create BERT embeddings
 bert = SentenceTransformer('sentence-transformers/all-roberta-large-v1', device=args.device).encode
 print('generating BERT embeddings')
 
 df['bert'] = df['content'].progress_apply(lambda tweet : bert(min_clean(tweet))))
-df['bertNoTags'] = df['noTags'].progress_apply(lambda tweet : bert(min_clean(tweet))))
+
 
 # Cluster the tweet embeddings??
 
