@@ -17,7 +17,6 @@ import pickle
 # nltk.download('wordnet')
 # nltk.download('omw-1.4')
 # nltk.download('punkt')
-import itertools
 from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords

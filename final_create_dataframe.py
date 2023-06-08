@@ -2,7 +2,7 @@ from models.embedders import FastText
 from sklearn import cluster
 from nltk.corpus import stopwords
 from re import sub
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer
 from tqdm import tqdm
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -14,11 +14,10 @@ import itertools
 import pickle
 
 
-
+''' # not needed unless you're regenerating wordnet stuff or lemmatizing/stemming
 # nltk.download('wordnet')
 # nltk.download('omw-1.4')
 # nltk.download('punkt')
-import itertools
 from nltk.corpus import wordnet
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
@@ -27,9 +26,9 @@ from nltk.stem.snowball import SnowballStemmer
 stemmer = SnowballStemmer("english")
 stemIgnStop = SnowballStemmer('english', ignore_stopwords=True)
 lemmer = WordNetLemmatizer()
-
-
 '''
+
+''' # re-enable to use command line args
 parser = argparse.ArgumentParser()
 parser.add_argument('--data_path', type=str, default='data/dataset.csv', help='path of the csv file to use')
 parser.add_argument('--save_path', type=str, default='data/dataframe', help='path to place the resulting dataframe')
@@ -114,6 +113,7 @@ def min_clean(tweet: str) -> str:
     return cleaned.strip()
 
 
+''' # only used for collecting information about feature reduction
 ####################################################
 # functions for lemmatizing and stemming
 ####################################################
@@ -130,7 +130,7 @@ def stem(words):
     for i in range(0,len(words)):
        words[i] = stemmer.stem(words[i])
     return words
-
+'''
 
 # Init tqdm for pandas df.apply
 tqdm.pandas()
@@ -150,12 +150,14 @@ cleanedWords = np.unique(list(itertools.chain(*[df["cleaned"].iloc[j,].split(sep
 keepStopWords = np.unique(list(itertools.chain(*[df["keepStop"].iloc[j,].split(sep = " ") for j in range(df.shape[0]-1)])), return_counts = True)
 featReducWords = np.unique(list(itertools.chain(*[df["featReduc"].iloc[j,].split(sep = " ") for j in range(df.shape[0]-1)])), return_counts = True)
 
+'''
 cleanedWords[0][0:7] # for some reason the first 6 entries here are empty/underscores... we'll ignore those
 # array(['', '___', '_____', '______', '_________', '_____________', 'aa'])
 keepStopWords[0][0:7] # same thing happens with other two types
 # array(['', '___', '_____', '______', '_________', '_____________', 'a'])
 featReducWords[0][0:7]
 # array(['', '___', '_____', '______', '_________', '_____________', 'aa'])
+'''
 
 # first column is the word; second column is the number of occurances
 cleanedWordCounts = np.array([cleanedWords[0][6:], cleanedWords[1][6:]]).T
@@ -165,6 +167,7 @@ keepStopWordCounts.shape # (30304, 2)
 featReducWordCounts = np.array([featReducWords[0][6:], featReducWords[1][6:]]).T
 featReducWordCounts.shape # (17463, 2)
 
+''' # more stuff that's just analysis
 # number/proportion of stop words
 sum(keepStopWordCounts[:,1].astype(int)) # 681039
 sum([row[1].astype(int) for row in keepStopWordCounts if row[0] in stopword_set]) # 211824
@@ -183,23 +186,28 @@ sum(featReducWordCounts[featReducWordCounts[:,1].astype(int)==1][:,1].astype(int
 # number of single-occurance words replaced using feature reduction: 13214 - 8873 = 4341 (4341/13214 = 0.33)
 # old proportion of words which occurred once (before feature reduction): 13214/469215 = 0.028
 # new proportion of words which occur once (after feature reduction): 8873/469215 = 0.018
-cleanedSingleWords = cleanedWordCounts[cleanedWordCounts[:,1].astype(int)==1][:,0]
+'''
+
 featReducSingleWords = featReducWordCounts[featReducWordCounts[:,1].astype(int)==1][:,0]
+''' # more stuff that's just analysis
+cleanedSingleWords = cleanedWordCounts[cleanedWordCounts[:,1].astype(int)==1][:,0]
 len(set([tweet for tweet in df["cleaned"] for word in cleanedSingleWords if word in tweet.split(' ')])) # 10914
 len(set([tweet for tweet in df["featReduc"] for word in featReducSingleWords if word in tweet.split(' ')])) # 7576
 # number of tweets containing single occurrance words before featReduc: 10914 (proportion: 10914/63021 = 0.173)
 # number of tweets containing single occurrance words after featReduc: 7576 (proportion: 7576/63021 = 0.120)
 # number of tweets containing >1 single occurrance word before featReduc: 13214 - 10914 = 2300
 # number of tweets containing >1 single occurrance word after featReduc: 8873 - 7576 = 1297
+'''
 
 # More cleaning (once singleReducWords has been defined)
 df['finalReduc'] = df['featReduc'].apply(removeSingle, singleList = featReducSingleWords)   # more for TF-IDF
 
 finalReducWords = np.unique(list(itertools.chain(*[df["finalReduc"].iloc[j,].split(sep = " ") for j in range(df.shape[0]-1)])), return_counts = True)
-finalReducWords[0][0:7] # still have the weird first 6 entries
+# finalReducWords[0][0:7] # still have the weird first 6 entries
 # array(['', '___', '_____', '______', '_________', '_____________', 'aa'])
 finalReducWordCounts = np.array([finalReducWords[0][6:], finalReducWords[1][6:]]).T
 
+''' # more that's just analysis
 # comparison of different feature reduction methods:
 len(set(lem(cleanedWordCounts[:,0]))) # 26414
 len(set(stem(cleanedWordCounts[:,0]))) # 20940
@@ -210,10 +218,12 @@ len(finalReducWordCounts[:,0]) # 8590
 # number of unique words after stemming: 20940 (proportion: 20940/30145 = 0.695)
 # number of unique words after cluster feature reduction: 17463 (proportion: 17463/30145 = 0.579)
 # number of unique words after cluster feature reduction and single word removal: 8590 (proportion: 8590/30145 = 0.285)
+'''
 
 # save data frame: columns saved are id, datetime, publisher, content, cleaned (for FastText), minClean (for bert), and finalReduc (for TF-IDF)
-df[['id','datetime','publisher','content','cleaned','minClean','finalReduc']].to_pickle('allTheTextData.pickle')
+# df[['id','datetime','publisher','content','cleaned','minClean','finalReduc']].to_pickle('allTheTextData.pickle')
 
+''' # can't run these on my computer
 # Create FastText embeddings
 ft = FastText()
 print('generating FastText embeddings')
@@ -223,24 +233,15 @@ df['fast'] = df['cleaned'].progress_apply(ft)
 bert = SentenceTransformer('sentence-transformers/all-roberta-large-v1', device=args.device).encode
 print('generating BERT embeddings')
 df['bert'] = df['minClean'].progress_apply(bert)
+'''
 
 # Create TF-IDF embeddings
 vectorizer = TfidfVectorizer(token_pattern = r"\S+", stop_words = ['___', '_____', '______', '_________', '_____________'])
 tfidf_matrix = vectorizer.fit_transform(list(df['finalReduc']))
-#tfidf_df = pd.DataFrame(tfidf_matrix.toarray(), columns=vectorizer.get_feature_names_out())
-df['tfidf'] = tfidf_matrix.toarray()
+# i think something is broken in these next lines
+# tfidf_df = pd.DataFrame(tfidf_matrix.toarray(), columns=vectorizer.get_feature_names_out())
+# df['tfidf'] = tfidf_matrix.toarray()
 
 # save data frame: columns saved are id, datetime, publisher, content, cleaned (for FastText), minClean (for bert), finalReduc (for TF-IDF), fast (fast text embedding), bert (bert embedding), and tfidf (tfidf embedding)
-df[['id','datetime','publisher','content','cleaned','minClean','finalReduc', 'fast', 'bert', 'tfidf']].to_pickle('allData.pickle')
-
-
-
-
-
-
-
-
-
-
-
+# df[['id','datetime','publisher','content','cleaned','minClean','finalReduc', 'fast', 'bert', 'tfidf']].to_pickle('allData.pickle')
 
